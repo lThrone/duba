@@ -1,5 +1,4 @@
 from flask import Flask
-from pymongo import MongoClient
 from ask_sdk_core.skill_builder import SkillBuilder
 from flask_ask_sdk.skill_adapter import SkillAdapter
 from ask_sdk_core.dispatch_components import AbstractRequestHandler
@@ -9,15 +8,11 @@ from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model.ui import SimpleCard
 from ask_sdk_model import Response
 from alexa import data, util
+import databaseManager as db
 import random
 
 
 app = Flask(__name__)
-
-
-client = MongoClient(port=27017)
-db=client["vocabularydatabase"]
-
 
 sb = SkillBuilder()
 
@@ -75,14 +70,20 @@ class StoreVocabularyRequestHandler(AbstractRequestHandler):
         translation = util.translate(name)
         print(translation)
 
-        nameDoc = {
-            'id': random.randint(1000, 9999),
-            'deutsch': checkVoc.name,
-            'englisch': translation,
-            'gelernt': False
-        }
-        dbcol = db["GermanToEnglish"]
-        x = dbcol.insert_one(nameDoc)
+        try:
+            dbGerToEng = db.DatabaseManager(random.randint(1000, 9999), checkVoc.name, translation, False)
+            dbGerToEng.createInstanceGerToEng()
+            dbGerToEng.getDocument()
+        except Exception as e:
+            print(e)
+        #nameDoc = {
+        #   'id': random.randint(1000, 9999),
+        #    'deutsch': checkVoc.name,
+        #    'englisch': translation,
+        #    'gelernt': False
+        #}
+        #dbcol = db["GermanToEnglish"]
+        #x = dbcol.insert_one(nameDoc)
 
         #db.names.insert(nameDoc)
 
@@ -92,6 +93,48 @@ class StoreVocabularyRequestHandler(AbstractRequestHandler):
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Vokabel gespeichert", speech_text)).set_should_end_session(
+            False)
+        return handler_input.response_builder.response
+
+class learnVocabularyEntry(AbstractRequestHandler): #
+    """Handler for Skill Launch."""
+
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return is_intent_name("LearnVocabulary")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        speech_text = data.LEARNVOCENTRYHELPER
+
+        handler_input.response_builder.speak(speech_text).set_card(
+            SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
+            False)
+        return handler_input.response_builder.response
+
+class questionCountRequest(AbstractRequestHandler): #
+    """Handler for Skill Launch."""
+
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return is_intent_name("countRequestForVocabularyLearn")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+
+        slots = handler_input.request_envelope.request.intent.slots
+        questionCount = slots["anzahl"].value
+
+        #handler_input.response_builder.add_directive()             Kann damit ein Dialog geführt werden?
+        #handler_input.response_builder.add_directive_to_reprompt()
+
+
+
+
+        speech_text = data.WELCOME
+
+        handler_input.response_builder.speak(speech_text).set_card(
+            SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
             False)
         return handler_input.response_builder.response
 
@@ -205,6 +248,8 @@ sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(FallbackIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
 sb.add_request_handler(AddVocabularyRequestHandler())
+sb.add_request_handler(learnVocabularyEntry())
+sb.add_request_handler(questionCountRequest())
 
 sb.add_exception_handler(CatchAllExceptionHandler())
 
