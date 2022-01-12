@@ -8,7 +8,7 @@ def dudenCheck(name):
         checkWord = duden.get(name.capitalize())
 
     if checkWord is None:
-        checkWord = duden.search(name) # json picker schauen und dort erste eintrag rausnehmen
+        checkWord = duden.search(name) #TODO json picker schauen und dort erste eintrag rausnehmen
     if checkWord is None:
         checkWord = duden.search(name.capitalize())
 
