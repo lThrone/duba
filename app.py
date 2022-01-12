@@ -11,11 +11,16 @@ from alexa import data, util
 import databaseManager as db
 import random
 
-
 app = Flask(__name__)
 
 sb = SkillBuilder()
 
+learnModeStatus = "inactive"
+questionsForLearnModule = []
+activeQuestion = []
+dbGerToEng = db.DatabaseManager()
+questionCount = 0
+randomVariable = 0
 
 class LaunchRequestHandler(AbstractRequestHandler):
     """Handler for Skill Launch."""
@@ -44,7 +49,7 @@ class AddVocabularyRequestHandler(AbstractRequestHandler):
         # type: (HandlerInput) -> Response
 
 
-        speech_text = data.ADDVOCABULARYHELPER
+        speech_text = data.ADDQUESTLANGUAGEREQUESTMSG
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Vokabel hinzufügen", speech_text)).set_should_end_session(
@@ -62,34 +67,27 @@ class StoreVocabularyRequestHandler(AbstractRequestHandler):
         # type: (HandlerInput) -> Response
 
         slots = handler_input.request_envelope.request.intent.slots
-        name = slots["wordForTranslation"].value
+        val = slots["wordForTranslation"].value
 
-        checkVoc = util.dudenCheck(name)
+        checkVoc = util.dudenCheck(val)
         print(checkVoc.name)
 
-        translation = util.translate(name)
+        translation = util.translate(val)
         print(translation)
 
         try:
             dbGerToEng = db.DatabaseManager(random.randint(1000, 9999), checkVoc.name, translation, False)
             dbGerToEng.createInstanceGerToEng()
-            dbGerToEng.getDocument()
+            questionsForLearnModule = dbGerToEng.getDocument()
         except Exception as e:
             print(e)
-        #nameDoc = {
-        #   'id': random.randint(1000, 9999),
-        #    'deutsch': checkVoc.name,
-        #    'englisch': translation,
-        #    'gelernt': False
-        #}
-        #dbcol = db["GermanToEnglish"]
-        #x = dbcol.insert_one(nameDoc)
 
-        #db.names.insert(nameDoc)
+        #for i in questionsForLearnModule:
+        #    print(i)
 
-        speech_text = f'Das Wort {checkVoc.name} heißt übersetzt {translation}. ' \
-                      f'Sie wurde für zukünftige Tests gespeichert. Falls sie weitere Wörter speichern möchten, sagen ' \
-                      f'sie das Wort. Wenn sie Vokabeln üben möchten sagen sie vokabeln lernen.'
+        print(questionsForLearnModule[0])
+        speech_text = data.STOREVOCABULARYSPEECHTEXT.format(checkword=checkVoc.name, transl=translation)
+
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Vokabel gespeichert", speech_text)).set_should_end_session(
@@ -106,6 +104,14 @@ class learnVocabularyEntry(AbstractRequestHandler): #
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
         speech_text = data.LEARNVOCENTRYHELPER
+        questionsForLearnModule = dbGerToEng.getDocument()
+        print(len(questionsForLearnModule))
+        if not questionsForLearnModule: # check if the question list is empty | if user want lern without any entrys
+            speech_text = data.LEARNVOCENTRYIFDBISEMPTY
+            handler_input.response_builder.speak(speech_text).set_card(
+                SimpleCard("Vokabeln lernen fehlgeschlagen", data.WELCOME)).set_should_end_session(
+                False)
+            return handler_input.response_builder.response
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
@@ -121,21 +127,129 @@ class questionCountRequest(AbstractRequestHandler): #
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-
+        questionsForLearnModule = dbGerToEng.getDocument()
         slots = handler_input.request_envelope.request.intent.slots
         questionCount = slots["anzahl"].value
+        word = "test"
 
-        #handler_input.response_builder.add_directive()             Kann damit ein Dialog geführt werden?
-        #handler_input.response_builder.add_directive_to_reprompt()
+        #TODO Wenn die questionForLearnModule leer ist muss learnmoodestatus="inactiv"
+        learnModeStatus = "active" # make the global status active to access the learn path in germanWordHandler or
+                                   # englishWordHandler
 
+        if int(questionCount) > len(questionsForLearnModule):
+            print(len(questionsForLearnModule))
+            handler_input.response_builder.speak(data.COUNTFAILURE.format(anzahl=len(questionsForLearnModule))).set_card(
+                SimpleCard("Duba - Vokabeln schnell und einfach lernen", data.COUNTFAILURE.format(anzahl=len(questionsForLearnModule)))).set_should_end_session(
+                False)
 
+            return handler_input.response_builder.response
 
+        randomVariable = random.randint(0, len(questionsForLearnModule) - 1)
 
-        speech_text = data.WELCOME
+        # Hier muss aus der Liste eins rausgenommen werden und in die active Questionlist eingetragen werden
+        activeQuestion.append(questionsForLearnModule.pop(randomVariable))
+
+        print(activeQuestion[0]["deutsch"])
+
+        speech_text = data.QUESTIONMSGGERTOENG.format(vokabel=activeQuestion[0]["deutsch"])
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
             False)
+
+        return handler_input.response_builder.response
+
+class germanWordHandler(AbstractRequestHandler): #
+    """Handler for Skill Launch."""
+    #TODO einzelne Wörter werden hier aufgerufen. Wir müssen einen globalen rekursiv Wert implementieren
+    #TODO und wenn die Zahl != 0 -> kann diese Funktion aufgerufen werden, ansonsten return response das der Nutzer seine Eingabe richtig machen soll
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return is_intent_name("deutschwoerter")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        slots = handler_input.request_envelope.request.intent.slots
+        word = slots["germanword"].value
+        speech_text = "Deutsches Wort wurde erkannt."
+
+        if learnModeStatus == "inactive": # this global variable manages if we want add question or learn question
+            speech_text = data.BREAKFORLEARNINACTIVE
+            handler_input.response_builder.speak(speech_text).set_card(
+                SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
+                False)
+
+            return handler_input.response_builder.response
+
+        if learnModeStatus == "active":
+            return
+            # TODO abgleichen des gefragten wortes und der erhaltenen antwort vom nutzer, gefragtes Wort mit session_attributes erhältlich?
+
+
+        handler_input.response_builder.speak(speech_text).set_card(
+            SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
+            False)
+
+        return handler_input.response_builder.response
+
+class englishWordHandler(AbstractRequestHandler): #
+    """Handler for Skill Launch."""
+    #TODO einzelne Wörter werden hier aufgerufen. Wir müssen einen globalen Wert implementieren
+    #TODO und wenn die Zahl != 0 -> kann diese Funktion aufgerufen werden, ansonsten return response das der Nutzer seine Eingabe richtig machen soll
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return is_intent_name("englischwoerter")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        slots = handler_input.request_envelope.request.intent.slots
+        word = slots["englishword"].value
+
+
+        speech_text = "Englisch Wort wurde erkannt."
+
+        handler_input.response_builder.speak(speech_text).set_card(
+            SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
+            False)
+
+        return handler_input.response_builder.response
+
+class germanToEnglishHandler(AbstractRequestHandler): #
+    """Handler for Skill Launch."""
+
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return is_intent_name("germanToEnglish")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+
+
+        speech_text = "Englisch Wort wurde erkannt."
+
+        handler_input.response_builder.speak(speech_text).set_card(
+            SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
+            False)
+
+        return handler_input.response_builder.response
+
+class englishToGermanWordHandler(AbstractRequestHandler): #
+    """Handler for Skill Launch."""
+
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return is_intent_name("englishToGerman")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+
+
+        speech_text = "Englisch Wort wurde erkannt."
+
+        handler_input.response_builder.speak(speech_text).set_card(
+            SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
+            False)
+
         return handler_input.response_builder.response
 
 class HelloWorldIntentHandler(AbstractRequestHandler):
@@ -250,6 +364,10 @@ sb.add_request_handler(SessionEndedRequestHandler())
 sb.add_request_handler(AddVocabularyRequestHandler())
 sb.add_request_handler(learnVocabularyEntry())
 sb.add_request_handler(questionCountRequest())
+sb.add_request_handler(germanWordHandler())
+sb.add_request_handler(englishWordHandler())
+sb.add_request_handler(englishToGermanWordHandler())
+sb.add_request_handler(germanToEnglishHandler())
 
 sb.add_exception_handler(CatchAllExceptionHandler())
 
