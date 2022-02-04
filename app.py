@@ -27,6 +27,7 @@ class LaunchRequestHandler(AbstractRequestHandler):
         # type: (HandlerInput) -> Response
         speech_text = data.WELCOME
 
+        # The Skill returns at the beginning this handler as welcoming
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
             False)
@@ -34,7 +35,7 @@ class LaunchRequestHandler(AbstractRequestHandler):
 
 
 class AddVocabularyRequestHandler(AbstractRequestHandler):
-    """Handler for option to add vocabulary"""
+    """Handler for adding vocabulary"""
 
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
@@ -43,7 +44,8 @@ class AddVocabularyRequestHandler(AbstractRequestHandler):
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
 
-        values.setMenuState(False)
+        values.setMenuState(False)  # if the setmenustate is false, we have programmatcally selected
+        # the option to add vocabulary
 
         speech_text = data.ADDQUESTLANGUAGEREQUESTMSG
 
@@ -58,6 +60,8 @@ class EnglishStoreVocabularyRequestHandler(AbstractRequestHandler):
 
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
+        # with the values.getmenustate, we ensure that the correct intent will be started, because
+        # we have more than one check if the is_intent_name is englischwoerter
         return (is_intent_name("englischwoerter")(handler_input) and (values.getMenuState() == False))
 
     def handle(self, handler_input):
@@ -66,10 +70,12 @@ class EnglishStoreVocabularyRequestHandler(AbstractRequestHandler):
         slots = handler_input.request_envelope.request.intent.slots
         val = slots["englishword"].value
 
-        translation = util.translate(val, 'de', 'en')
+        translation = util.translate(val, 'de', 'en')  # we use a translate framework to german words
+        # to english and vice versa
         print(translation)
 
         try:
+            # The word will be stored in the database, with some parameters
             dbEngToGer = db.DatabaseManager(random.randint(1000, 9999), val.lower(), translation.lower(), False)
             dbEngToGer.createInstanceEngToGer()
             questionsForLearnModule = dbEngToGer.getGermanDocument()
@@ -89,6 +95,7 @@ class GermanStoreVocabularyRequestHandler(AbstractRequestHandler):
 
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
+        # we can use this handler for two different intents
         return is_intent_name("StoreVocabulary")(handler_input) or \
                (is_intent_name("deutschwoerter")(handler_input) and (values.getMenuState() == False))
 
@@ -108,14 +115,19 @@ class GermanStoreVocabularyRequestHandler(AbstractRequestHandler):
             except Exception as e:
                 print(e)
 
-        checkVoc = util.dudenCheck(val)
+        checkVoc = util.dudenCheck(
+            val)  # for the german word we check it with an duden-Framework, so we ensure that the
+        # word is a valid word from duden
         print(checkVoc.name)
 
-        translation = util.translate(val, 'en', 'de')
+        translation = util.translate(val, 'en',
+                                     'de')  # the german word will translated here for storing in our database
         print(translation)
 
         try:
-            dbGerToEng = db.DatabaseManager(random.randint(1000, 9999), checkVoc.name.lower(), translation.lower(), False)
+            # The word will be stored in the database, with some parameters
+            dbGerToEng = db.DatabaseManager(random.randint(1000, 9999), checkVoc.name.lower(), translation.lower(),
+                                            False)
             dbGerToEng.createInstanceGerToEng()
             questionsForLearnModule = dbGerToEng.getGermanDocument()
         except Exception as e:
@@ -139,8 +151,11 @@ class LearnVocabularyEntry(AbstractRequestHandler):  #
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
         speech_text = data.LEARNVOCENTRYHELPER
-        values.setMenuState(True)
-        questionsForLearnModule = db.DatabaseManager().getGermanDocument()
+        values.setMenuState(True)  # if the setmenustate is true, we have programmatcally selected
+        # the option to learn vocabulary
+
+        questionsForLearnModule = db.DatabaseManager().getGermanDocument()  # we fill our list with the entrys
+        # of our german database
         print(len(values.getGermanQuestionForLearn()))
         if not questionsForLearnModule:  # check if the question list is empty | if user want learn without any entrys
             speech_text = data.LEARNVOCENTRYIFDBISEMPTY
@@ -167,18 +182,21 @@ class QuestionCountRequest(AbstractRequestHandler):
 
         slots = handler_input.request_envelope.request.intent.slots
         questionCount = slots["anzahl"].value
-        values.setQuestionCount(int(questionCount))
-        learnDirection = values.getLearnDirection()
+        values.setQuestionCount(int(questionCount))  # setQuestionCount to handle the amount of requested questions
+        learnDirection = values.getLearnDirection()  # getLearnDirection says us if we want learn from german to english
+        # and vice verca
 
         print(learnDirection)
 
+        # we get here the len of our entrys in the database depending on our learnDirection
         if learnDirection == "germanToEnglish":
             dbEntryCount = len(values.getGermanQuestionForLearn())
         if learnDirection == "englishToGerman":
             dbEntryCount = len(values.getEnglishQuestionForLearn())
 
         print(dbEntryCount)
-        if int(questionCount) > dbEntryCount:
+        if int(questionCount) > dbEntryCount:  # this handles if the requested amount of questions are higher than the
+            # existing length of entrys in our database
             print(dbEntryCount)
             handler_input.response_builder.speak(data.COUNTFAILURE.format(anzahl=dbEntryCount)).set_card(
                 SimpleCard("Duba - Vokabeln schnell und einfach lernen",
@@ -189,12 +207,12 @@ class QuestionCountRequest(AbstractRequestHandler):
 
         randomVariable = random.randint(0, dbEntryCount - 1)
 
-        values.setActiveQuestion(randomVariable)
+        values.setActiveQuestion(randomVariable)  # a random question will be selected
 
         print(values.getActiveQuestion()[0]["deutsch"])
         print(values.getActiveQuestion()[0]["englisch"])
 
-        if learnDirection == "germanToEnglish":
+        if learnDirection == "germanToEnglish":  # the speech text must be other depending on our learnDirection
             speech_text = data.QUESTIONMSGGERTOENG.format(vokabel=values.getActiveQuestion()[0]["deutsch"])
         if learnDirection == "englishToGerman":
             speech_text = data.QUESTIONMSGENGTOGER.format(vokabel=values.getActiveQuestion()[0]["englisch"])
@@ -219,9 +237,10 @@ class GermanWordHandler(AbstractRequestHandler):  #
         word = slots["germanword"].value
         questionCount = values.getQuestionCount()
 
+        # checks if the answered word is equal to our database entry
         if word == values.getActiveQuestion()[0]["deutsch"]:
             if questionCount <= 1:  # if the count reaches 0, the learning is done
-                values.clearEntrys()
+                values.clearEntrys()  # if our amount of questions ends, we need to cleanup some parameters
                 speech_text = data.LEARNSUCCESSFULLYEND
 
                 handler_input.response_builder.speak(speech_text).set_card(
@@ -233,9 +252,11 @@ class GermanWordHandler(AbstractRequestHandler):  #
             values.setQuestionCount(questionCount - 1)  # Count of question will be reduced by 1
             dbEntryCount = len(values.getEnglishQuestionForLearn())
             randomVariable = random.randint(0, dbEntryCount - 1)
-            values.setActiveQuestion(randomVariable)
+            values.setActiveQuestion(randomVariable)  # a random question will be chosen
 
-            speech_text = data.QUESTIONSUCCESSFORENGLISHWORDS.format(count=values.getQuestionCount(), englishWord=values.getActiveQuestion()[0]["englisch"])
+            speech_text = data.QUESTIONSUCCESSFORENGLISHWORDS.format(count=values.getQuestionCount(),
+                                                                     englishWord=values.getActiveQuestion()[0][
+                                                                         "englisch"])
 
             handler_input.response_builder.speak(speech_text).set_card(
                 SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
@@ -243,6 +264,7 @@ class GermanWordHandler(AbstractRequestHandler):  #
 
             return handler_input.response_builder.response
 
+        # This part will be reached if the word is not the same as our entry in the database
         speech_text = data.RETRYENGLISHWORDONFAILURE.format(germanWord=values.getActiveQuestion()[0]["deutsch"])
 
         handler_input.response_builder.speak(speech_text).set_card(
@@ -265,10 +287,10 @@ class EnglishWordHandler(AbstractRequestHandler):  #
         word = slots["englishword"].value
         counter = values.getQuestionCount()
 
+        # checks if the answered word is equal to our database entry
         if word == values.getActiveQuestion()[0]["englisch"]:
-
             if counter <= 1:  # if the count reaches 0, the learning is done
-                values.clearEntrys()
+                values.clearEntrys()  # if our amount of questions ends, we need to cleanup some parameters
                 speech_text = data.LEARNSUCCESSFULLYEND
 
                 handler_input.response_builder.speak(speech_text).set_card(
@@ -280,9 +302,10 @@ class EnglishWordHandler(AbstractRequestHandler):  #
             values.setQuestionCount(counter - 1)  # Count of question will be reduced by 1
             dbEntryCount = len(values.getGermanQuestionForLearn())
             randomVariable = random.randint(0, dbEntryCount - 1)
-            values.setActiveQuestion(randomVariable)
+            values.setActiveQuestion(randomVariable)  # a random question will be chosen
 
-            speech_text = data.QUESTIONSUCCESSFORGERMANWORDS.format(count=values.getQuestionCount(), germanWord=values.getActiveQuestion()[0]["deutsch"])
+            speech_text = data.QUESTIONSUCCESSFORGERMANWORDS.format(count=values.getQuestionCount(),
+                                                                    germanWord=values.getActiveQuestion()[0]["deutsch"])
 
             handler_input.response_builder.speak(speech_text).set_card(
                 SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
@@ -290,15 +313,14 @@ class EnglishWordHandler(AbstractRequestHandler):  #
 
             return handler_input.response_builder.response
 
+        # This part will be reached if the word is not the same as our entry in the database
         speech_text = data.RETRYGERMANWORDONFAILURE.format(englishWord=values.getActiveQuestion()[0]["englisch"])
-
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
             False)
 
         return handler_input.response_builder.response
-
 
 
 class LearnGermanToEnglishHandler(AbstractRequestHandler):  #
@@ -310,7 +332,7 @@ class LearnGermanToEnglishHandler(AbstractRequestHandler):  #
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        values.setLearnDirection("germanToEnglish")
+        values.setLearnDirection("germanToEnglish")  # set the learn direction to handle the right option
 
         speech_text = data.LEARNVOCABULARYCOUNTMSG
 
@@ -330,7 +352,7 @@ class LearnEnglishToGermanWordHandler(AbstractRequestHandler):  #
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        values.setLearnDirection("englishToGerman")
+        values.setLearnDirection("englishToGerman")  # set the learn direction to handle the right option
 
         speech_text = data.LEARNVOCABULARYCOUNTMSG
 
@@ -350,6 +372,7 @@ class AddGermanToEnglishHandler(AbstractRequestHandler):  #
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
+        # Handles the respond learnDirection
         speech_text = data.ADDVOCABULARYHELPER
 
         handler_input.response_builder.speak(speech_text).set_card(
@@ -360,7 +383,7 @@ class AddGermanToEnglishHandler(AbstractRequestHandler):  #
 
 
 class AddEnglishToGermanWordHandler(AbstractRequestHandler):  #
-    """Handler for Skill Launch."""
+    """Handler for english to german option"""
 
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
@@ -368,6 +391,7 @@ class AddEnglishToGermanWordHandler(AbstractRequestHandler):  #
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
+        # Handles the respond learnDirection
         speech_text = data.ADDVOCABULARYENGHELPER
 
         handler_input.response_builder.speak(speech_text).set_card(
@@ -439,11 +463,9 @@ class FallbackIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speech_text = (
-            "The Hello World skill can't help you with that.  "
-            "You can say hello!!")
-        reprompt = "You can say hello!!"
-        handler_input.response_builder.speak(speech_text).ask(reprompt)
+        speech_text = data.ERRORMSG
+        handler_input.response_builder.speak(speech_text).ask(speech_text).set_card(
+            SimpleCard("Ein Fehler ist leider aufgetreten", speech_text))
         return handler_input.response_builder.response
 
 

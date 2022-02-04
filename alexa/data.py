@@ -1,5 +1,7 @@
 WELCOME = "Willkommen zu Duba. Möchten sie Vokabeln lernen oder hinzufügen?"
 
+ERRORMSG = "Es ist leider ein Problem aufgetreten. Wiederholen sie bitte ihre Eingabe."
+
 FALLBACKMSG = "Ich habe sie nicht verstanden. Bitte wiederholen sie es."
 
 ADDQUESTLANGUAGEREQUESTMSG = "Möchten sie die Vokabel von deutsch zu englisch oder von englisch zu deutsch einfügen?"
