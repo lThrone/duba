@@ -254,7 +254,12 @@ class GermanWordHandler(AbstractRequestHandler):  #
             randomVariable = random.randint(0, dbEntryCount - 1)
             values.setActiveQuestion(randomVariable)  # a random question will be chosen
 
-            speech_text = data.QUESTIONSUCCESSFORENGLISHWORDS.format(count=values.getQuestionCount(),
+            if questionCount == 2:
+                speech_text = data.ENGLISHQUESTIONWHENONEREMAIN.format(count=values.getQuestionCount(),
+                                                                         englishWord=values.getActiveQuestion()[0][
+                                                                             "englisch"])
+            else:
+                speech_text = data.QUESTIONSUCCESSFORENGLISHWORDS.format(count=values.getQuestionCount(),
                                                                      englishWord=values.getActiveQuestion()[0][
                                                                          "englisch"])
 
@@ -265,7 +270,7 @@ class GermanWordHandler(AbstractRequestHandler):  #
             return handler_input.response_builder.response
 
         # This part will be reached if the word is not the same as our entry in the database
-        speech_text = data.RETRYENGLISHWORDONFAILURE.format(germanWord=values.getActiveQuestion()[0]["deutsch"])
+        speech_text = data.RETRYGERMANWORDONFAILURE.format(englishWord=values.getActiveQuestion()[0]["englisch"])
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(
@@ -304,7 +309,11 @@ class EnglishWordHandler(AbstractRequestHandler):  #
             randomVariable = random.randint(0, dbEntryCount - 1)
             values.setActiveQuestion(randomVariable)  # a random question will be chosen
 
-            speech_text = data.QUESTIONSUCCESSFORGERMANWORDS.format(count=values.getQuestionCount(),
+            if counter == 2:
+                speech_text = data.GERMANQUESTIONWHENONEREMAIN.format(count=values.getQuestionCount(),
+                                                                        germanWord=values.getActiveQuestion()[0]["deutsch"])
+            else:
+                speech_text = data.QUESTIONSUCCESSFORGERMANWORDS.format(count=values.getQuestionCount(),
                                                                     germanWord=values.getActiveQuestion()[0]["deutsch"])
 
             handler_input.response_builder.speak(speech_text).set_card(
@@ -314,7 +323,7 @@ class EnglishWordHandler(AbstractRequestHandler):  #
             return handler_input.response_builder.response
 
         # This part will be reached if the word is not the same as our entry in the database
-        speech_text = data.RETRYGERMANWORDONFAILURE.format(englishWord=values.getActiveQuestion()[0]["englisch"])
+        speech_text = data.RETRYENGLISHWORDONFAILURE.format(germanWord=values.getActiveQuestion()[0]["deutsch"])
 
         handler_input.response_builder.speak(speech_text).set_card(
             SimpleCard("Duba - Vokabeln schnell und einfach lernen", speech_text)).set_should_end_session(

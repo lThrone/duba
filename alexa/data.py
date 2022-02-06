@@ -34,13 +34,16 @@ COUNTFAILURE = "Ihre eingegebene Menge überschreitet die Menge der vorhandenen 
                "Sie eine passende Zahl an. Aktuell haben sie {anzahl} Einträge in ihrer Sammlung."
 
 QUESTIONSUCCESSFORGERMANWORDS = "Richtig. Sie haben noch {count} Fragen. Was heißt {germanWord} auf Englisch?"
+GERMANQUESTIONWHENONEREMAIN = "Richtig. Sie haben noch {count} Frage. Was heißt {germanWord} auf Englisch?"
+
 
 QUESTIONSUCCESSFORENGLISHWORDS = "Richtig. Sie haben noch {count} Fragen. Was heißt {englishWord} auf Deutsch?"
+ENGLISHQUESTIONWHENONEREMAIN = "Richtig. Sie haben noch {count} Frage. Was heißt {englishWord} auf Deutsch?"
 
-RETRYGERMANWORDONFAILURE = "Das Wort stimmt leider nicht. Überprüfen sie bitte ihre Antwort. Wie heißt {englishWord} auf " \
+RETRYGERMANWORDONFAILURE = "Das Wort stimmt leider nicht. Überprüfen sie bitte ihre Antwort. Was heißt {englishWord} auf " \
                          "Deutsch?"
 
-RETRYENGLISHWORDONFAILURE = "Das Wort stimmt leider nicht. Überprüfen sie bitte ihre Antwort. Wie heißt {germanWord} auf " \
+RETRYENGLISHWORDONFAILURE = "Das Wort stimmt leider nicht. Überprüfen sie bitte ihre Antwort. Was heißt {germanWord} auf " \
                          "Englisch?"
 
 LEARNSUCCESSFULLYEND = "Glückwunsch, sie haben alle Fragen richtig beantwortet. Sie befinden sich wieder im Startmenü. " \
